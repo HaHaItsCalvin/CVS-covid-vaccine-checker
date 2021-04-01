@@ -11,21 +11,39 @@ pip install beepy
 in your terminal.
 '''
 
-
-
 import requests
 import time
 import beepy
 
+APPOINTMENT_STATUSES = {
+    "BOOKED": "Fully Booked"
+}
+# Update with your cities nearby
+cities = ['EL MONTE', 'WEST COVINA', 'SAN GABRIEL',
+          'ALHAMBRA', 'PASADENA', 'ARCADIA', "MONTEREY PARK",
+          "TEMPLE CITY", "LA PUENTE", "MONTEBELLO", "BALDWIN PARK",
+          "MONROVIA"]
+
+priorities = {
+    "EL MONTE": 10,
+    "ARCADIA": 9,
+    "TEMPLE CITY": 8,
+    "ALHAMBRA": 7,
+}
+
+state = 'CA'  # Update with your state abbreviation. Be sure to use all CAPS, e.g. RI
+secToNextRun = 60
+# Update this to set the number of hours you want the script to run.
+hoursToRun = 3
+soundToMake = 'success'
 
 def findAVaccine():
-    hours_to_run = 3 ###Update this to set the number of hours you want the script to run.
-    max_time = time.time() + hours_to_run*60*60
+    max_time = time.time() + hoursToRun*60*60
     while time.time() < max_time:
 
-        state = 'IL' ###Update with your state abbreviation. Be sure to use all CAPS, e.g. RI
-
-        response = requests.get("https://www.cvs.com/immunizations/covid-19-vaccine.vaccine-status.{}.json?vaccineinfo".format(state.lower()), headers={"Referer":"https://www.cvs.com/immunizations/covid-19-vaccine"})
+        vaccineInfoUrl = "https://www.cvs.com/immunizations/covid-19-vaccine.vaccine-status.{}.json?vaccineinfo"
+        response = requests.get(vaccineInfoUrl.format(state.lower()), headers={
+                                "Referer": "https://www.cvs.com/immunizations/covid-19-vaccine"})
         payload = response.json()
 
         mappings = {}
@@ -33,18 +51,32 @@ def findAVaccine():
             mappings[item.get('city')] = item.get('status')
 
         print(time.ctime())
-        cities = ['BELLEVILLE', 'CHICAGO', 'DEKALB', 'WAUKEGAN'] ###Update with your cities nearby
         for city in cities:
             print(city, mappings[city])
 
+        available = []
         for key in mappings.keys():
-            if (key in cities) and (mappings[key] != 'Fully Booked'):
-                beepy.beep(sound = 'coin')
-                break
+            if (key in cities) and (mappings[key] != APPOINTMENT_STATUSES["BOOKED"]):
+                available.append(key)
+                pass
             else:
                 pass
 
-        time.sleep(60) ##This runs every 60 seconds. Update here if you'd like it to go every 10min (600sec)
+        if (len(available) > 0):
+            available.sort(reverse=True, key=prioritySort)
+            print("\n")
+            print("Appointments Available at:")
+            print(available)
+            print("Go to the link to book: https://www.cvs.com/immunizations/covid-19-vaccine")
+            print("More Specific Site: https://www.cvs.com/vaccine/intake/store/cvd-schedule?icid=coronavirus-lp-vaccine-sd-statetool")
+            beepy.beep(sound=soundToMake)
+        # This runs every 60 seconds. Update here if you'd like it to go every 10min (600sec)
+        time.sleep(secToNextRun)
         print('\n')
 
-findAVaccine() ###this final line runs the function. Your terminal will output the cities every 60seconds
+
+def prioritySort(city):
+    return priorities.get(city, 0)
+
+
+findAVaccine()  # this final line runs the function. Your terminal will output the cities every 60seconds
